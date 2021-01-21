@@ -1,31 +1,44 @@
+import os
+import json
+import string
 from constants import Constants
-from nltk.tokenize import word_tokenize
-from nltk.stem import WordNetLemmatizer
-from nltk.stem.snowball import RomanianStemmer
 
 
-def tokenization(file_input):
-    list_tokens = list()
-    with open(file_input, 'r', encoding='utf-8') as file_in:
-        lines = file_in.readlines()
-        for line in lines[:5]:
-            list_tokens += word_tokenize(line)
-    return list_tokens
+def get_files_from_folder(folder_path):
+    files = os.listdir(folder_path)
+    return [file for file in files if file.startswith('review_page') and file.endswith('.json')]
 
 
-def lemmatization(list_tokens):
-    wnl = RomanianStemmer()
-    list_lemmas = list()
-    for token in list_tokens:
-        list_lemmas.append(wnl.stem(token))
-    return list_lemmas
+def parse_jsons_file_reviews_to_binposro_inputuri(list_files_json):
+    string_punctuation = r"""!"#$%&'()*+,-/:;<=>?@[\]^_`{|}~👍🏻"""
+    translator = str.maketrans(string_punctuation, ' ' * len(string_punctuation))
+
+    for file_json in list_files_json:
+        with open(os.path.join(Constants.LAST_REVIEW_PAGES_JSON_CLEAN, file_json), 'r', encoding="utf8") as json_file:
+            print(file_json)
+            json_data = json.load(json_file)
+            for mobile_phone_url in json_data:
+                count_reviews = 0
+                try:
+                    file_txt_name = '_'.join(
+                        [s.lower() for s in json_data[mobile_phone_url]['page_1'][0]['mobile_phone_name'].split()]
+                    )
+                    for page in json_data[mobile_phone_url]:
+                        for review in json_data[mobile_phone_url][page]:
+                            if int(review['nr_stars']) != 3:
+                                review_text = review['review_text'].translate(translator)
+                                for i in range(2, 10):
+                                    review_text.replace(i * '.', '')
+                                with open(
+                                        os.path.join(
+                                            Constants.BIN_POSRO_INPUTURI_FOLDER,
+                                            f'{file_txt_name}_{count_reviews + 1}_{int(review["nr_stars"])}.txt'
+                                        ), 'w', encoding="utf8") as txt_file:
+                                    txt_file.write(review_text)
+                                count_reviews += 1
+                except KeyError as e:
+                    print(e)
 
 
-def parse_punctuation_from_list_tokens(list_tokens):
-    return [token for token in list_tokens if token not in ('.', ',', '(', '-', ')', '!', '?')]
-
-
-list_tokenization = tokenization(Constants.REVIEWS_TEXT)
-list_tokenization_without_punctuation = parse_punctuation_from_list_tokens(list_tokenization)
-print(list_tokenization_without_punctuation)
-# print(lemmatization(list_tokenization_without_punctuation))
+file_jsons = get_files_from_folder(Constants.LAST_REVIEW_PAGES_JSON_CLEAN)
+parse_jsons_file_reviews_to_binposro_inputuri(file_jsons)

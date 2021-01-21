@@ -7,9 +7,9 @@ import pandas as pd
 from selenium.common.exceptions import NoSuchElementException
 from bs4 import BeautifulSoup
 from constants import Constants
-from Driver import driver
-from Driver.driver_utils import DriverUtils
-from Pages.emag_page import EmagPage
+from driver import driver
+from driver.driver_utils import DriverUtils
+from pages.emag_page import EmagPage
 
 
 class WebScrapper:
@@ -128,11 +128,16 @@ class WebScrapper:
 
                 page_nr = 0
                 while True:
-                    time.sleep(2)
+                    time.sleep(1.5)
                     try:
                         pagination.scroll_to()
-                    except NoSuchElementException:
+                    except NoSuchElementException as e:
+                        print(e)
                         break
+
+                    page_source_code = driver.page_source
+
+                    soup = BeautifulSoup(page_source_code, "html.parser")
 
                     review_items = soup.find_all('div', attrs={'class': 'product-review-item'})
 
@@ -160,7 +165,8 @@ class WebScrapper:
                     try:
                         if not pagination.pagination_ul.click_on_last_next_page_if_not_disabled():
                             break
-                    except IndexError:
+                    except IndexError as e:
+                        print(e)
                         break
                     page_nr += 1
                 self.write_to_json_file(Constants.REVIEWS_JSON_FILE_NAME, all_reviews)
